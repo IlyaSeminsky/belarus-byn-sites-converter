@@ -76,10 +76,10 @@ Add all five:
 ## 5. Day-to-day workflow after this
 
 - Every PR that changes extension code **must bump `version` in
-  `manifest.json`** (e.g. `1.5` → `1.6`). The workflow fails the build
-  if it doesn't, since the Chrome Web Store rejects re-uploading an
+  `public/manifest.json`** (e.g. `1.5` → `1.6`). The workflow fails the
+  build if it doesn't, since the Chrome Web Store rejects re-uploading an
   unchanged version.
-- On merge to `main`, GitHub Actions zips the extension, uploads it,
+- On merge to `main`, GitHub Actions builds and zips the extension, uploads it,
   and **publishes it live immediately** — no manual approval step, per
   your choice. Google's own review queue still runs after that (usually
   minutes to a few days for a listed extension); until it clears, the

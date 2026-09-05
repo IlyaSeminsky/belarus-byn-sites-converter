@@ -1,0 +1,10 @@
+{
+  "kufar": {
+    "label": "kufar.by",
+    "hosts": ["https://www.kufar.by/*", "https://re.kufar.by/*"]
+  },
+  "avby": {
+    "label": "av.by",
+    "hosts": ["https://av.by/*", "https://*.av.by/*"]
+  }
+}

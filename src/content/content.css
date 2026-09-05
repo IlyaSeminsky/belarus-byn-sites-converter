@@ -1,0 +1,27 @@
+.byn-price-badge {
+  display: block !important;
+  margin-top: 2px !important;
+  font-size: 14px !important;
+  color: #999 !important;
+  font-weight: normal !important;
+  line-height: 1.2 !important;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  white-space: nowrap;
+  pointer-events: none;
+  user-select: none;
+}
+
+/* kufar: detail-page price row needs a little more breathing room. */
+[class*="adview_desktop_price"] + .byn-price-badge,
+[class*="adview_mobile_price"] + .byn-price-badge {
+  margin-top: 4px !important;
+  margin-bottom: 4px !important;
+}
+
+/* kufar: map balloons (Yandex Maps) are compact and use no hashed class names. */
+[class*="map"] .byn-price-badge,
+[class*="balloon"] .byn-price-badge,
+[class*="rate-line"] .byn-price-badge {
+  font-size: 13px !important;
+  margin-top: 1px !important;
+}
