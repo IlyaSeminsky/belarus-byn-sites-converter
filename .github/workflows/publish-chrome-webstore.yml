@@ -1,0 +1,86 @@
+name: Publish to Chrome Web Store
+
+# Runs on every push to main. Builds the extension and pushes it straight
+# to the Chrome Web Store as a live update (upload + auto-publish).
+#
+# One-time manual setup required before this workflow can succeed —
+# see .github/CHROME_WEBSTORE_SETUP.md.
+#
+# Required repo secrets (Settings -> Secrets and variables -> Actions):
+#   CHROME_CLIENT_ID
+#   CHROME_CLIENT_SECRET
+#   CHROME_REFRESH_TOKEN
+#   CHROME_PUBLISHER_ID
+#   CHROME_EXTENSION_ID
+#
+# Google rejects an upload whose manifest "version" matches the currently
+# published version, so every PR that changes extension code must bump
+# the version field in public/manifest.json. This workflow enforces that
+# before touching the Chrome Web Store API.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - src/**
+      - public/**
+      - package.json
+      - package-lock.json
+      - build.mjs
+      - icons/**
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Require a manifest version bump
+        run: |
+          PREVIOUS_VERSION=$(git show HEAD^:public/manifest.json | jq -r .version || echo "")
+          CURRENT_VERSION=$(jq -r .version public/manifest.json)
+          echo "previous=$PREVIOUS_VERSION current=$CURRENT_VERSION"
+          if [ "$PREVIOUS_VERSION" = "$CURRENT_VERSION" ]; then
+            echo "::error::public/manifest.json version ($CURRENT_VERSION) was not bumped. Chrome Web Store rejects re-uploading the same version."
+            exit 1
+          fi
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Test
+        run: npm test
+
+      - name: Build
+        run: npm run build
+
+      - name: Package extension
+        run: |
+          mkdir -p dist-out
+          (cd dist && zip -r ../dist-out/extension.zip . -x '*.DS_Store')
+
+      - name: Upload and publish to Chrome Web Store
+        env:
+          CLIENT_ID: ${{ secrets.CHROME_CLIENT_ID }}
+          CLIENT_SECRET: ${{ secrets.CHROME_CLIENT_SECRET }}
+          REFRESH_TOKEN: ${{ secrets.CHROME_REFRESH_TOKEN }}
+          PUBLISHER_ID: ${{ secrets.CHROME_PUBLISHER_ID }}
+          EXTENSION_ID: ${{ secrets.CHROME_EXTENSION_ID }}
+        run: npx chrome-webstore-upload-cli@6 --source dist-out/extension.zip
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: extension-zip
+          path: dist-out/extension.zip
