@@ -5,6 +5,12 @@ export interface PriceHit {
   anchor: Element;
   /** Parsed BYN amount. */
   byn: number;
+  /**
+   * Set for a delta amount (e.g. av.by's price-change log: "+ 3 044 руб."),
+   * so the badge shows a signed change rather than a plain "≈" price.
+   * Omit for a plain price.
+   */
+  sign?: 1 | -1;
 }
 
 /** Renders (or updates) the badge for one price hit, however that site needs it placed. */

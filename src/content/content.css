@@ -7,8 +7,7 @@
   line-height: 1.2 !important;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   white-space: nowrap;
-  pointer-events: none;
-  user-select: none;
+  user-select: text;
 }
 
 /* kufar: detail-page price row needs a little more breathing room. */
@@ -25,3 +24,53 @@
   font-size: 13px !important;
   margin-top: 1px !important;
 }
+
+/* av.by: price-history chart bars and log rows are narrow/compact. */
+.graph-item .byn-price-badge,
+.graph-log .byn-price-badge {
+  font-size: 11px !important;
+  margin-top: 0 !important;
+  white-space: normal !important;
+}
+
+/*
+ * av.by chart bar (.graph-item): a fixed-height flex column with exactly
+ * two children — the price (top) and the colored bar (bottom, its own
+ * height encoding the value). The date label lives in a separate row
+ * entirely, flush against the bottom of that column with no gap. A badge
+ * appended as a sibling of the price is therefore either flex-distributed
+ * into the price/bar gap, or, pinned absolute to the column, lands right
+ * on top of that date row.
+ *
+ * avby.ts places this badge INSIDE `.graph-item__price` instead (see
+ * `placeInsideAnchor`), so its containing block is the price box itself —
+ * unaffected by the bar or the date row. `margin-bottom` on the price
+ * reserves a line of space in the flex column so the bar doesn't render
+ * underneath it either.
+ */
+.graph-item__price {
+  position: relative !important;
+  margin-bottom: 14px !important;
+}
+.graph-item .byn-price-badge {
+  position: absolute !important;
+  top: 100% !important;
+  left: 0 !important;
+  right: 0 !important;
+  text-align: center;
+  /* The reserved margin-bottom gap isn't always honored by the bar's own
+     height math, so the badge can end up overlapping the bar's top edge.
+     Gray-on-gradient there is unreadable — give it an opaque pill so it
+     stays legible regardless of exactly where it lands. */
+  background: #fff !important;
+  border-radius: 3px;
+  padding: 0 3px;
+  z-index: 2;
+}
+
+/*
+ * av.by change log row (.graph-log): badge nests INSIDE .graph-log__diff
+ * and .graph-log__sum (see avby.ts `place`) rather than as their sibling,
+ * so it just wraps onto its own line under the value within that cell,
+ * without disturbing the row's own flex layout.
+ */

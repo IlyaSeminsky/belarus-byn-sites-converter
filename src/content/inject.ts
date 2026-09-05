@@ -70,6 +70,27 @@ export function placeAmongSiblings(anchor: Element, text: string, tooltip: strin
   }
 }
 
+/**
+ * av.by chart bar price: the badge is appended INSIDE the anchor itself
+ * (not as its sibling), so its containing block for `position: absolute`
+ * is the anchor's own box, not the flex column it sits in — independent of
+ * whatever else shares that column (the bar, an unrelated row below it).
+ */
+export function placeInsideAnchor(anchor: Element, text: string, tooltip: string): void {
+  const existing = Array.from(anchor.children).find(isOwnNode) as HTMLElement | undefined;
+  if (existing) {
+    if (existing.textContent !== text) {
+      existing.textContent = text;
+    }
+    if (existing.title !== tooltip) {
+      existing.title = tooltip;
+    }
+    return;
+  }
+
+  anchor.appendChild(createBadge(text, tooltip));
+}
+
 /** Remove every badge node this extension has injected into the document. */
 export function removeAllBadges(root: ParentNode = document): void {
   for (const badge of root.querySelectorAll(`[${BADGE_ATTRIBUTE}]`)) {

@@ -58,15 +58,44 @@ function effectiveRates(cache: RateCache, manualRates: ManualRates): { USD: numb
 }
 
 function requestBackgroundRefresh(): void {
-  chrome.runtime.sendMessage({ type: "ENSURE_FRESH" }, () => {
-    // Swallow "no receiving end" / other errors — best-effort only. Reading
-    // chrome.runtime.lastError prevents an unchecked-error console warning.
-    void chrome.runtime.lastError;
-  });
+  try {
+    chrome.runtime.sendMessage({ type: "ENSURE_FRESH" }, () => {
+      // Swallow "no receiving end" / other errors — best-effort only. Reading
+      // chrome.runtime.lastError prevents an unchecked-error console warning.
+      void chrome.runtime.lastError;
+    });
+  } catch (error) {
+    if (!isContextInvalidated(error)) {
+      throw error;
+    }
+  }
 }
 
+/**
+ * True once the extension has been reloaded/updated/uninstalled while this
+ * content script is still attached to an old page: every chrome.* call
+ * (sync or, for the storage APIs, via a rejected promise) starts throwing
+ * "Extension context invalidated." There is nothing to recover — the old
+ * script instance is dead — so this is a signal to go quiet, not an error
+ * to report.
+ */
+function isContextInvalidated(error: unknown): boolean {
+  return error instanceof Error && error.message.includes("Extension context invalidated");
+}
+
+let stopped = false;
 let observer: MutationObserver | undefined;
 let debounceTimer: ReturnType<typeof setTimeout> | undefined;
+
+function stop(): void {
+  stopped = true;
+  observer?.disconnect();
+  observer = undefined;
+  if (debounceTimer !== undefined) {
+    clearTimeout(debounceTimer);
+    debounceTimer = undefined;
+  }
+}
 
 function runInjectionPass(site: SiteAdapter, settings: Settings, cache: RateCache): void {
   const rates = effectiveRates(cache, settings.manualRates);
@@ -76,7 +105,8 @@ function runInjectionPass(site: SiteAdapter, settings: Settings, cache: RateCach
   try {
     const hits = site.scan(document);
     for (const hit of hits) {
-      const text = formatBadge(hit.byn, rates, settings.displayMode);
+      const amount = formatBadge(hit.byn, rates, settings.displayMode);
+      const text = hit.sign === undefined ? amount : `${hit.sign === 1 ? "+" : "−"} ${amount}`;
       site.place(hit.anchor, text, tooltip);
     }
   } finally {
@@ -90,31 +120,45 @@ function runInjectionPass(site: SiteAdapter, settings: Settings, cache: RateCach
 }
 
 async function renderAll(site: SiteAdapter): Promise<void> {
-  const settings = await readSettings();
-
-  if (!settings.enabled || !settings.sites[site.id]) {
-    observer?.disconnect();
-    observer = undefined;
-    removeAllBadges(document);
+  if (stopped) {
     return;
   }
 
-  const cache = await readRateCache();
-  if (!cache) {
-    requestBackgroundRefresh();
+  try {
+    const settings = await readSettings();
+
+    if (!settings.enabled || !settings.sites[site.id]) {
+      observer?.disconnect();
+      observer = undefined;
+      removeAllBadges(document);
+      return;
+    }
+
+    const cache = await readRateCache();
+    if (!cache) {
+      requestBackgroundRefresh();
+      ensureObserving(site);
+      return;
+    }
+
+    if (isCacheStale(cache)) {
+      requestBackgroundRefresh();
+    }
+
     ensureObserving(site);
-    return;
+    runInjectionPass(site, settings, cache);
+  } catch (error) {
+    if (!isContextInvalidated(error)) {
+      throw error;
+    }
+    stop();
   }
-
-  if (isCacheStale(cache)) {
-    requestBackgroundRefresh();
-  }
-
-  ensureObserving(site);
-  runInjectionPass(site, settings, cache);
 }
 
 function scheduleRender(site: SiteAdapter): void {
+  if (stopped) {
+    return;
+  }
   if (debounceTimer !== undefined) {
     clearTimeout(debounceTimer);
   }
@@ -127,7 +171,7 @@ function scheduleRender(site: SiteAdapter): void {
 }
 
 function ensureObserving(site: SiteAdapter): void {
-  if (observer) {
+  if (observer || stopped) {
     return;
   }
   observer = new MutationObserver((mutations) => {
@@ -154,6 +198,9 @@ function main(): void {
   }
 
   chrome.storage.onChanged.addListener((changes, areaName) => {
+    if (stopped) {
+      return;
+    }
     if (areaName === "local" && STORAGE_KEY_RATE_CACHE in changes) {
       void renderAll(adapter);
       return;
