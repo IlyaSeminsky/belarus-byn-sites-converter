@@ -1,4 +1,9 @@
-import { BADGE_ATTRIBUTE, placeAfterAnchor, placeInsideAnchor } from "../content/inject.js";
+import {
+  BADGE_ATTRIBUTE,
+  placeAfterAnchor,
+  placeInsideAnchor,
+  textWithoutBadges,
+} from "../content/inject.js";
 import { parseBynAmount } from "../shared/money.js";
 import type { PriceHit, SiteAdapter } from "./types.js";
 
@@ -6,11 +11,17 @@ import type { PriceHit, SiteAdapter } from "./types.js";
 // nested inside the anchor rather than appended as its sibling.
 const GRAPH_ITEM_PRICE_SELECTOR = ".graph-item__price";
 
+// dealer salon top card: the price block overlaid on the car photo. Needs
+// its own placement too (see `place` below) — it is a baseline-aligned flex
+// row ("от" / amount / "руб.") that a sibling badge would be pulled into.
+const SALON_TOP_PRICES_SELECTOR = ".salon-listing-top__prices";
+
 const PRICE_SELECTORS = [
   ".card__price-primary", // advert detail page
   ".listing-item__price-primary", // search results listing
   ".listing-top__price-primary", // promoted / similar / related cards
   ".listing-index__price", // index/summary cards (listing-index__summary)
+  SALON_TOP_PRICES_SELECTOR, // dealer salon top card, over the photo
   GRAPH_ITEM_PRICE_SELECTOR, // price-history chart: price at one point
   ".graph-log__sum", // price-history change log: running total after a change
   ".drawer-price", // mobile bottom drawer: sticky price header
@@ -22,6 +33,14 @@ const PRICE_SELECTORS = [
 // skipped — its value is already covered by its own .graph-log__sum.
 const DIFF_SELECTOR = ".graph-log__diff";
 const DIFF_SIGN = /^\s*([+−-])/;
+
+// Anchors whose badge nests inside them rather than following as a sibling.
+const NESTED_BADGE_SELECTOR = [
+  GRAPH_ITEM_PRICE_SELECTOR,
+  DIFF_SELECTOR,
+  ".graph-log__sum",
+  SALON_TOP_PRICES_SELECTOR,
+].join(",");
 
 /** Maximum number of parentElement hops to look for a wrapping <button>. */
 const MAX_ANCHOR_HOPS = 3;
@@ -61,7 +80,7 @@ function scan(root: ParentNode): PriceHit[] {
       continue;
     }
 
-    const byn = parseBynAmount(el.textContent ?? "");
+    const byn = parseBynAmount(textWithoutBadges(el));
     if (byn === null) {
       continue;
     }
@@ -80,7 +99,7 @@ function scan(root: ParentNode): PriceHit[] {
       continue;
     }
 
-    const text = el.textContent ?? "";
+    const text = textWithoutBadges(el);
     const signMatch = DIFF_SIGN.exec(text);
     if (!signMatch) {
       continue; // "Начальная цена" — no numeric delta to convert
@@ -108,7 +127,7 @@ function scan(root: ParentNode): PriceHit[] {
  * Most av.by badges go after their anchor as a sibling — including the
  * button-wrapped detail-page price (`.card__price-primary` resolves its
  * anchor to the wrapping `.card__price-button`; the badge lands right
- * after that button). Two chart/log cases nest the badge inside the
+ * after that button). Three cases nest the badge inside the
  * anchor instead, because the anchor's siblings there carry unrelated
  * layout (a flex column with a chart bar, a log row's other flex cells)
  * that a plain sibling badge gets squeezed into or mis-positioned against:
@@ -117,11 +136,14 @@ function scan(root: ParentNode): PriceHit[] {
  *    row beneath it.
  *  - the change-log diff/sum (.graph-log__diff, .graph-log__sum): sibling
  *    of the log row's other flex cells.
+ *  - the dealer-salon top card price (.salon-listing-top__prices): a
+ *    baseline-aligned flex row overlaid on the car photo, whose siblings
+ *    are the card's title and the photo itself.
  * Nesting keeps each case's own layout untouched and lands the badge right
  * under its value.
  */
 function place(anchor: Element, text: string, tooltip: string): void {
-  if (anchor.matches(`${GRAPH_ITEM_PRICE_SELECTOR}, ${DIFF_SELECTOR}, .graph-log__sum`)) {
+  if (anchor.matches(NESTED_BADGE_SELECTOR)) {
     placeInsideAnchor(anchor, text, tooltip);
     return;
   }

@@ -7,13 +7,14 @@ after this is automatic on every push to `main`
 
 ## 1. Create the store listing (manual, dashboard only)
 
-1. Zip the extension yourself once: `manifest.json`, `background.js`,
-   `content.js`, `options.html`, `options.js`, `options.css`, `icons/`.
+1. Build the upload archive once: `npm run zip` → `releases/byn-price-converter-<version>.zip`.
 2. Go to the [Chrome Web Store Developer Dashboard](https://chrome.google.com/webstore/devconsole),
    click **New item**, upload that zip.
 3. Fill in the **Store listing** and **Privacy** tabs (description,
-   screenshots, category, and the privacy practices — point it at
-   `PRIVACY.md` / `README.md`), then submit for the first review.
+   screenshots, category, and the privacy practices — point the privacy
+   policy URL at the repository's README:
+   <https://github.com/IlyaSeminsky/kufar-usd-converter/blob/main/README.md>),
+   then submit for the first review.
 4. Once the item exists, copy the **extension ID** from the dashboard
    URL (`.../detail/<EXTENSION_ID>/edit`).
 5. Copy your **publisher ID** from **Account → Publisher settings**.

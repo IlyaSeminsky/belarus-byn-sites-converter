@@ -9,6 +9,33 @@ export function isOwnNode(node: Node): boolean {
   return node.nodeType === Node.ELEMENT_NODE && isBadgeElement(node as Element);
 }
 
+/**
+ * The element's text with any badge we nested inside it excluded.
+ *
+ * `placeInsideAnchor` makes our own "≈ … $" text part of the anchor's
+ * `textContent`, which `parseBynAmount` then rejects (it refuses anything
+ * carrying a currency sign). A re-scan would therefore skip the anchor and
+ * leave a stale badge behind after a rate or display-mode change. Reading
+ * the site's own text only keeps nested badges refreshable.
+ */
+export function textWithoutBadges(el: Element): string {
+  if (!el.querySelector(`[${BADGE_ATTRIBUTE}]`)) {
+    return el.textContent ?? "";
+  }
+
+  let text = "";
+  for (const node of el.childNodes) {
+    if (isOwnNode(node)) {
+      continue;
+    }
+    text +=
+      node.nodeType === Node.ELEMENT_NODE
+        ? textWithoutBadges(node as Element)
+        : (node.textContent ?? "");
+  }
+  return text;
+}
+
 function createBadge(text: string, tooltip: string): HTMLElement {
   // <span>, not <div>: on kufar the price line lives inside a <p>, where a
   // block-level <div> child is invalid markup.

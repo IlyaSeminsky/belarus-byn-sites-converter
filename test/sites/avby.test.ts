@@ -102,3 +102,33 @@ describe("removeAllBadges", () => {
     expect(document.querySelectorAll("[data-byn-badge]").length).toBe(0);
   });
 });
+
+describe("avby adapter on dealer-salon top card markup", () => {
+  it("nests the badge inside .salon-listing-top__prices", () => {
+    document.body.innerHTML = loadFixture("salon-top.html");
+    runPass();
+
+    const prices = document.querySelector(".salon-listing-top__prices");
+    expect(prices).not.toBeNull();
+    const badge = prices?.lastElementChild;
+    expect(badge?.hasAttribute("data-byn-badge")).toBe(true);
+    // 74 184 BYN / 3.0396 ≈ 24 406 $ (Intl groups with a non-breaking space)
+    expect(badge?.textContent?.replace(/\s/g, "")).toBe("≈24406$");
+    expect(prices?.nextElementSibling).toBeNull();
+  });
+
+  it("keeps the nested badge up to date across passes", () => {
+    document.body.innerHTML = loadFixture("salon-top.html");
+    runPass();
+
+    const hits = avbyAdapter.scan(document);
+    expect(hits.length).toBe(1);
+    for (const hit of hits) {
+      avbyAdapter.place(hit.anchor, formatBadge(hit.byn, rates, "EUR"), "tooltip");
+    }
+
+    const badges = document.querySelectorAll("[data-byn-badge]");
+    expect(badges.length).toBe(1);
+    expect(badges[0]?.textContent).toContain("€");
+  });
+});

@@ -46,7 +46,7 @@ shared parts.
 | `src/shared/settings.ts` + `constants.ts` | The only settings store: `enabled`, `displayMode` (USD/EUR/both), `manualRates` overrides, `sites` (per-site on/off), in `chrome.storage.sync`. `DEFAULT_SETTINGS.sites` and `sanitizeSites` derive from the registry, so a new site defaults to enabled without any settings-schema edit. |
 | `src/shared/money.ts` | `parseBynAmount` (untrusted DOM text → BYN number), `convert`, `formatBadge`. Shared by every adapter. |
 | `src/popup/` | Popup UI (Russian): enable toggle, rate overrides, display mode, per-site checkboxes (rendered from `SITE_IDS`/`SITES`, so a new site needs no popup edit), refresh button. |
-| `PRIVACY.md` | Privacy policy — must stay true to "no data collection". |
+| `README.md` | Privacy policy (the Chrome Web Store listing links here) — must stay true to "no data collection". `PRIVACY.md` is a stub pointing at it. |
 
 ### Adding a site
 
